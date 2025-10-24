@@ -45,7 +45,14 @@ HUGGINGFACE_API_KEY=your_key_here    # FREE option
 
 ### 3. Run Converter
 ```bash
+# English (default)
 python main.py your_catalog.pdf
+
+# Persian (فارسی) - with RTL layout
+python main.py your_catalog.pdf --lang persian
+
+# Chinese (中文)
+python main.py your_catalog.pdf --lang chinese
 ```
 
 ---
@@ -201,10 +208,28 @@ Options:
 
 ---
 
-## 🌍 Language Support
+## 🌍 Multi-Language Support
 
-Works with any UTF-8 language:
-- English, Chinese, Spanish, French, German, Japanese, Arabic, Russian, etc.
+### AI-Powered Translation (NEW!)
+
+Generate shopping cards in 3 languages:
+
+| Language | Command | Layout | Font |
+|----------|---------|--------|------|
+| **English** | `--lang english` (default) | LTR | Sans-serif |
+| **Persian (فارسی)** | `--lang persian` | **RTL** | Persian fonts |
+| **Chinese (中文)** | `--lang chinese` | LTR | Chinese fonts |
+
+**Example:**
+```bash
+# Generate Persian version with RTL layout
+python main.py catalog.pdf --lang persian -o product_fa.html
+
+# Generate Chinese version  
+python main.py catalog.pdf --lang chinese -o product_zh.html
+```
+
+All translations powered by DeepSeek AI - maintains perfect HTML structure, tables, and formatting!
 
 ---
 

@@ -37,7 +37,7 @@ class HTMLGenerator:
         """Create Jinja2 template for product page"""
         
         template_str = """<!DOCTYPE html>
-<html lang="en">
+<html lang="{{ language }}"{% if is_rtl %} dir="rtl"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -50,10 +50,11 @@ class HTMLGenerator:
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: {% if language == 'fa' %}'Vazirmatn', 'Tahoma', 'Arial'{% elif language == 'zh' %}'Microsoft YaHei', 'SimHei', 'Arial'{% else %}-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif{% endif %};
             background: #f5f5f5;
             color: #333;
             line-height: 1.6;
+            direction: {% if is_rtl %}rtl{% else %}ltr{% endif %};
         }
         
         .header {
@@ -149,7 +150,7 @@ class HTMLGenerator:
             background: #f8f9ff;
             padding: 1rem;
             border-radius: 8px;
-            border-left: 4px solid #667eea;
+            {% if is_rtl %}border-right{% else %}border-left{% endif %}: 4px solid #667eea;
             display: flex;
             align-items: start;
         }
@@ -159,7 +160,7 @@ class HTMLGenerator:
             color: #667eea;
             font-weight: bold;
             font-size: 1.2rem;
-            margin-right: 0.8rem;
+            {% if is_rtl %}margin-left{% else %}margin-right{% endif %}: 0.8rem;
         }
         
         .specs-table {

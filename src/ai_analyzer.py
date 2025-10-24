@@ -138,7 +138,15 @@ class UniversalAIAnalyzer:
             }
             
             print(f"Sending request to DeepSeek API...")
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
+            print(f"Input size: {len(prompt)} characters, {len(tables)} tables")
+            
+            try:
+                response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
+            except requests.exceptions.Timeout:
+                print("DeepSeek timeout - retrying with smaller input...")
+                prompt = self._get_analysis_prompt() + f"\n\nFull Text Content (first 20000 chars):\n{full_text[:20000]}"
+                payload['messages'][1]['content'] = prompt
+                response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
             
             if response.status_code == 200:
                 result = response.json()
@@ -157,7 +165,12 @@ class UniversalAIAnalyzer:
                             ai_response = json_match.group(1).strip()
                     
                     parsed_data = self._parse_ai_response(ai_response)
-                    print(f"✓ Successfully extracted {len(parsed_data.get('products', []))} products!")
+                    num_products = len(parsed_data.get('products', []))
+                    print(f"✓ Successfully extracted {num_products} products!")
+                    
+                    if num_products == 0:
+                        print("WARNING: No products extracted - this might be an error")
+                    
                     return parsed_data
                 else:
                     print(f"DeepSeek error: Unexpected response format")
@@ -168,6 +181,8 @@ class UniversalAIAnalyzer:
                 
         except Exception as e:
             print(f"DeepSeek error: {e}")
+            import traceback
+            traceback.print_exc()
             return self._no_ai_configured()
     
     def _analyze_with_gpt4_vision(self, content: Dict[str, Any]) -> Dict[str, Any]:

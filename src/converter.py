@@ -18,6 +18,7 @@ if sys.platform == 'win32':
 from universal_extractor import extract_pdf_universal
 from ai_analyzer import UniversalAIAnalyzer
 from html_generator import HTMLGenerator
+from translator import AITranslator
 
 
 class UniversalPDFConverter:
@@ -26,18 +27,21 @@ class UniversalPDFConverter:
     Works with ANY product catalog - Electronics, Fashion, Industrial, etc.
     """
     
-    def __init__(self, use_ai: bool = True, use_vision: bool = True):
+    def __init__(self, use_ai: bool = True, use_vision: bool = True, language: str = 'english'):
         """
         Initialize converter
         
         Args:
             use_ai: Use AI for analysis (requires API key)
             use_vision: Use vision AI for image analysis (requires API key + vision models)
+            language: Output language (english, persian, chinese)
         """
         self.use_ai = use_ai
         self.use_vision = use_vision
+        self.language = language.lower()
         self.analyzer = UniversalAIAnalyzer(use_vision=use_vision)
         self.html_generator = HTMLGenerator()
+        self.translator = AITranslator() if language.lower() in ['persian', 'chinese'] else None
     
     def convert(self, pdf_path: str, output_html: Optional[str] = None, 
                 save_json: bool = True) -> str:
@@ -80,6 +84,12 @@ class UniversalPDFConverter:
                 print(f"✓ Saved extraction: {extract_path}\n")
             
             structured = self.analyzer.analyze_catalog(extracted)
+            
+            if self.translator and self.language in ['persian', 'chinese']:
+                print(f"\n{'='*80}")
+                print(f"TRANSLATING TO {self.language.upper()}")
+                print(f"{'='*80}\n")
+                structured = self.translator.translate_to_language(structured, self.language)
             
             if save_json:
                 struct_path = output_html.replace('.html', '_data.json')
@@ -160,6 +170,9 @@ Examples:
     parser.add_argument('--ai-only', action='store_true', help='Use AI without vision')
     parser.add_argument('--no-json', action='store_true', help='Do not save intermediate JSON files')
     parser.add_argument('--demo', action='store_true', help='Run demo mode')
+    parser.add_argument('--lang', '--language', dest='language', default='english',
+                       choices=['english', 'persian', 'chinese'],
+                       help='Output language (english, persian, chinese)')
     
     args = parser.parse_args()
     
@@ -186,9 +199,10 @@ Examples:
     
     use_ai = not args.no_ai
     use_vision = not args.no_vision and not args.ai_only
+    language = args.language
     
     try:
-        converter = UniversalPDFConverter(use_ai=use_ai, use_vision=use_vision)
+        converter = UniversalPDFConverter(use_ai=use_ai, use_vision=use_vision, language=language)
         output = converter.convert(
             args.pdf_path,
             args.output,
