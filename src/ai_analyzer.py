@@ -34,7 +34,11 @@ class UniversalAIAnalyzer:
         anthropic_key = os.getenv('ANTHROPIC_API_KEY', '').strip()
         google_key = os.getenv('GOOGLE_API_KEY', '').strip()
         huggingface_key = os.getenv('HUGGINGFACE_API_KEY', '').strip()
-        if anthropic_key and anthropic_key.startswith('sk-ant-'):
+        deepseek_key = os.getenv('DEEPSEEK_API_KEY', '').strip()
+        
+        if deepseek_key and deepseek_key.startswith('sk-'):
+            return 'deepseek'
+        elif anthropic_key and anthropic_key.startswith('sk-ant-'):
             return 'anthropic'
         elif huggingface_key and (huggingface_key.startswith('hf_') or len(huggingface_key) > 20):
             return 'huggingface'
@@ -75,9 +79,11 @@ class UniversalAIAnalyzer:
     
     def _analyze_with_vision_ai(self, content: Dict[str, Any]) -> Dict[str, Any]:
         """Use vision AI to analyze catalog images"""
-        print("Using AI Vision Analysis for maximum accuracy...")
+        print("Using AI Analysis for maximum accuracy...")
         
-        if self.ai_provider == 'openai':
+        if self.ai_provider == 'deepseek':
+            return self._analyze_with_deepseek(content)
+        elif self.ai_provider == 'openai':
             return self._analyze_with_gpt4_vision(content)
         elif self.ai_provider == 'anthropic':
             return self._analyze_with_claude_vision(content)
@@ -86,7 +92,70 @@ class UniversalAIAnalyzer:
         elif self.ai_provider == 'huggingface':
             return self._analyze_with_huggingface(content)
         else:
-            return self._analyze_with_advanced_rules(content)
+            print("\n⚠️  No AI provider configured. Please add API key.")
+            return self._no_ai_configured()
+    
+    def _analyze_with_deepseek(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze using DeepSeek AI"""
+        try:
+            import requests
+            
+            print("Analyzing with DeepSeek AI...")
+            
+            full_text = self._combine_text(content)[:30000]
+            tables = self._extract_all_tables(content)
+            
+            prompt = self._get_analysis_prompt()
+            prompt += f"\n\nFull Text Content:\n{full_text}"
+            
+            if tables:
+                prompt += f"\n\nTables Found: {len(tables)}"
+                for i, table in enumerate(tables[:5]):
+                    prompt += f"\n\nTable {i+1}:\n"
+                    for row in table['data'][:10]:
+                        prompt += " | ".join([str(cell) if cell else "" for cell in row]) + "\n"
+            
+            API_URL = "https://api.deepseek.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {os.getenv('DEEPSEEK_API_KEY')}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an expert at analyzing product catalogs and extracting structured information. Return ONLY valid JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 8000,
+                "temperature": 0.1
+            }
+            
+            print(f"Sending request to DeepSeek API...")
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if 'choices' in result and len(result['choices']) > 0:
+                    ai_response = result['choices'][0]['message']['content']
+                    print(f"✓ DeepSeek analysis complete!")
+                    return self._parse_ai_response(ai_response)
+                else:
+                    print(f"DeepSeek error: Unexpected response format")
+                    return self._no_ai_configured()
+            else:
+                print(f"DeepSeek API error: {response.status_code} - {response.text[:200]}")
+                return self._no_ai_configured()
+                
+        except Exception as e:
+            print(f"DeepSeek error: {e}")
+            return self._no_ai_configured()
     
     def _analyze_with_gpt4_vision(self, content: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze using GPT-4 Vision"""
@@ -268,6 +337,8 @@ class UniversalAIAnalyzer:
                     max_tokens=4096
                 )
                 result = response.choices[0].message.content
+            elif self.ai_provider == 'deepseek':
+                return self._analyze_with_deepseek(content)
             elif self.ai_provider == 'huggingface':
                 return self._analyze_with_huggingface(content)
             else:

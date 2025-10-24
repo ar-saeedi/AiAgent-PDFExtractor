@@ -25,7 +25,9 @@ Add your API key to `config/.env.example` and rename to `.env`:
 
 ```bash
 # Choose ONE provider:
-ANTHROPIC_API_KEY=your_key_here      # Recommended - Best accuracy
+DEEPSEEK_API_KEY=your_key_here       # Recommended - Fast & Affordable
+# OR
+ANTHROPIC_API_KEY=your_key_here      # Best for technical docs
 # OR
 OPENAI_API_KEY=your_key_here         # GPT-4 Vision
 # OR  
@@ -35,7 +37,8 @@ HUGGINGFACE_API_KEY=your_key_here    # FREE option
 ```
 
 **Get API Keys:**
-- Anthropic Claude: https://console.anthropic.com/ (BEST - 98%+ accuracy)
+- DeepSeek: https://platform.deepseek.com/ (⭐ Fast, Affordable, 98%+ accuracy)
+- Anthropic Claude: https://console.anthropic.com/ (Best for technical docs)
 - OpenAI GPT-4: https://platform.openai.com/api-keys
 - Google Gemini: https://makersuite.google.com/app/apikey
 - Hugging Face: https://huggingface.co/settings/tokens (FREE)
@@ -106,6 +109,7 @@ print(f'Generated: {output}')
 
 | Provider | Accuracy | Speed | Cost | Best For |
 |----------|----------|-------|------|----------|
+| **DeepSeek** ⭐ | 98%+ | Fast | $0.14/1M tokens | All catalogs |
 | **Anthropic Claude** ⭐ | 98%+ | Fast | $0.10/catalog | Technical docs |
 | **OpenAI GPT-4** | 97%+ | Medium | $0.50/catalog | Complex layouts |
 | **Google Gemini** | 95%+ | Fast | Free tier | General catalogs |
