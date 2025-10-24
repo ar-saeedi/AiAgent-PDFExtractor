@@ -102,17 +102,17 @@ class UniversalAIAnalyzer:
             
             print("Analyzing with DeepSeek AI...")
             
-            full_text = self._combine_text(content)[:30000]
+            full_text = self._combine_text(content)
             tables = self._extract_all_tables(content)
             
             prompt = self._get_analysis_prompt()
-            prompt += f"\n\nFull Text Content:\n{full_text}"
+            prompt += f"\n\nIMPORTANT: Extract ONLY the actual model numbers and information from the text below. Do NOT make up or invent any model numbers.\n\nFull Text Content:\n{full_text[:40000]}"
             
             if tables:
-                prompt += f"\n\nTables Found: {len(tables)}"
-                for i, table in enumerate(tables[:5]):
-                    prompt += f"\n\nTable {i+1}:\n"
-                    for row in table['data'][:10]:
+                prompt += f"\n\nTables Found: {len(tables)}\n"
+                for i, table in enumerate(tables[:10]):
+                    prompt += f"\nTable {i+1} (Critical - contains specifications):\n"
+                    for row in table['data'][:20]:
                         prompt += " | ".join([str(cell) if cell else "" for cell in row]) + "\n"
             
             API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -126,7 +126,7 @@ class UniversalAIAnalyzer:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are an expert at analyzing product catalogs and extracting structured information. Return ONLY valid JSON."
+                        "content": "You are an expert at analyzing product catalogs. You must extract ONLY the actual information from the provided text. NEVER invent or make up model numbers. Extract exactly what you see in the text. Return ONLY valid JSON with no markdown formatting."
                     },
                     {
                         "role": "user",
@@ -134,18 +134,31 @@ class UniversalAIAnalyzer:
                     }
                 ],
                 "max_tokens": 8000,
-                "temperature": 0.1
+                "temperature": 0.0
             }
             
             print(f"Sending request to DeepSeek API...")
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
             
             if response.status_code == 200:
                 result = response.json()
                 if 'choices' in result and len(result['choices']) > 0:
                     ai_response = result['choices'][0]['message']['content']
                     print(f"✓ DeepSeek analysis complete!")
-                    return self._parse_ai_response(ai_response)
+                    
+                    import re
+                    if '```json' in ai_response:
+                        json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
+                        if json_match:
+                            ai_response = json_match.group(1).strip()
+                    elif '```' in ai_response:
+                        json_match = re.search(r'```\s*(.*?)\s*```', ai_response, re.DOTALL)
+                        if json_match:
+                            ai_response = json_match.group(1).strip()
+                    
+                    parsed_data = self._parse_ai_response(ai_response)
+                    print(f"✓ Successfully extracted {len(parsed_data.get('products', []))} products!")
+                    return parsed_data
                 else:
                     print(f"DeepSeek error: Unexpected response format")
                     return self._no_ai_configured()
@@ -406,16 +419,31 @@ Rules:
     def _parse_ai_response(self, response_text: str) -> Dict[str, Any]:
         """Parse AI response into structured data"""
         try:
-            import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
+            json_text = response_text.strip()
+            data = json.loads(json_text)
+            return data
+        except json.JSONDecodeError as e:
+            print(f"JSON Parse Error: {str(e)[:100]}")
+            print(f"Attempting to fix malformed JSON...")
+            
+            try:
+                import re
+                json_text = response_text.strip()
+                json_text = re.sub(r',\s*}', '}', json_text)
+                json_text = re.sub(r',\s*]', ']', json_text)
+                
+                data = json.loads(json_text)
                 return data
-            else:
-                raise ValueError("No JSON found in response")
+            except:
+                print("ERROR: AI returned invalid JSON format")
+                return {
+                    "product_family": "Extraction Error",
+                    "category": "AI Response Invalid",
+                    "company": {},
+                    "products": []
+                }
         except Exception as e:
-            print(f"Warning: Could not parse AI response as JSON: {e}")
-            print("Response preview:", response_text[:500])
+            print(f"Parse Error: {e}")
             return {
                 "product_family": "Product Catalog",
                 "category": "General",
