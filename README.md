@@ -102,12 +102,17 @@ sys.path.insert(0, 'src')
 
 from converter import UniversalPDFConverter
 
-# Create converter
-converter = UniversalPDFConverter(use_ai=True, use_vision=True)
-
-# Convert catalog
+# English version (default)
+converter = UniversalPDFConverter(use_ai=True, use_vision=True, language='english')
 output = converter.convert('catalog.pdf')
-print(f'Generated: {output}')
+
+# Persian version with RTL
+converter_fa = UniversalPDFConverter(use_ai=True, use_vision=True, language='persian')
+output_fa = converter_fa.convert('catalog.pdf', 'product_fa.html')
+
+# Chinese version
+converter_zh = UniversalPDFConverter(use_ai=True, use_vision=True, language='chinese')
+output_zh = converter_zh.convert('catalog.pdf', 'product_zh.html')
 ```
 
 ---
@@ -173,12 +178,13 @@ For each PDF catalog:
 python main.py [PDF_FILE] [OPTIONS]
 
 Options:
-  -o, --output PATH    Output HTML file path
-  --no-ai              Run without AI (basic extraction)
-  --no-vision          Use text-only AI
-  --no-json            Don't save JSON files
-  --demo               Auto-find PDF in directory
-  -h, --help           Show help
+  -o, --output PATH        Output HTML file path
+  --lang LANGUAGE          Output language: english, persian, chinese (default: english)
+  --no-ai                  Run without AI (basic extraction)
+  --no-vision              Use text-only AI
+  --no-json                Don't save JSON files
+  --demo                   Auto-find PDF in directory
+  -h, --help               Show help
 ```
 
 ---
@@ -210,18 +216,28 @@ Options:
 
 ## 🌍 Multi-Language Support
 
-### AI-Powered Translation (NEW!)
+### Direct AI Extraction in 3 Languages (NEW!)
 
-Generate shopping cards in 3 languages:
+The AI extracts and generates content **directly** in your target language - no translation needed!
 
-| Language | Command | Layout | Font |
-|----------|---------|--------|------|
-| **English** | `--lang english` (default) | LTR | Sans-serif |
-| **Persian (فارسی)** | `--lang persian` | **RTL** | Persian fonts |
-| **Chinese (中文)** | `--lang chinese` | LTR | Chinese fonts |
+| Language | Command | Layout | Features |
+|----------|---------|--------|----------|
+| **English** | `--lang english` (default) | LTR | Standard layout |
+| **Persian (فارسی)** | `--lang persian` | **RTL** | Right-to-left + Persian fonts |
+| **Chinese (中文)** | `--lang chinese` | LTR | Chinese fonts optimized |
 
-**Example:**
+**How it works:**
+- AI analyzes the PDF and understands the content
+- Generates all product descriptions, features, and specs **directly in your chosen language**
+- HTML UI labels (buttons, headings) automatically localized
+- For Persian: Full RTL support with proper font rendering
+- For Chinese: Optimized fonts and proper character display
+
+**Examples:**
 ```bash
+# Generate English version (default)
+python main.py catalog.pdf
+
 # Generate Persian version with RTL layout
 python main.py catalog.pdf --lang persian -o product_fa.html
 
@@ -229,7 +245,7 @@ python main.py catalog.pdf --lang persian -o product_fa.html
 python main.py catalog.pdf --lang chinese -o product_zh.html
 ```
 
-All translations powered by DeepSeek AI - maintains perfect HTML structure, tables, and formatting!
+Powered by DeepSeek AI - perfect for international e-commerce!
 
 ---
 

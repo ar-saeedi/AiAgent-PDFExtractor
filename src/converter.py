@@ -18,7 +18,6 @@ if sys.platform == 'win32':
 from universal_extractor import extract_pdf_universal
 from ai_analyzer import UniversalAIAnalyzer
 from html_generator import HTMLGenerator
-from translator import AITranslator
 
 
 class UniversalPDFConverter:
@@ -39,9 +38,8 @@ class UniversalPDFConverter:
         self.use_ai = use_ai
         self.use_vision = use_vision
         self.language = language.lower()
-        self.analyzer = UniversalAIAnalyzer(use_vision=use_vision)
+        self.analyzer = UniversalAIAnalyzer(use_vision=use_vision, language=language)
         self.html_generator = HTMLGenerator()
-        self.translator = AITranslator() if language.lower() in ['persian', 'chinese'] else None
     
     def convert(self, pdf_path: str, output_html: Optional[str] = None, 
                 save_json: bool = True) -> str:
@@ -60,6 +58,7 @@ class UniversalPDFConverter:
         print("UNIVERSAL PDF TO SHOPPING CARD CONVERTER")
         print(f"{'='*80}")
         print(f"Input: {os.path.basename(pdf_path)}")
+        print(f"Output Language: {self.language.upper()}")
         print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"AI Enabled: {self.use_ai}")
         print(f"Vision AI: {self.use_vision and self.use_ai}")
@@ -84,12 +83,6 @@ class UniversalPDFConverter:
                 print(f"✓ Saved extraction: {extract_path}\n")
             
             structured = self.analyzer.analyze_catalog(extracted)
-            
-            if self.translator and self.language in ['persian', 'chinese']:
-                print(f"\n{'='*80}")
-                print(f"TRANSLATING TO {self.language.upper()}")
-                print(f"{'='*80}\n")
-                structured = self.translator.translate_to_language(structured, self.language)
             
             if save_json:
                 struct_path = output_html.replace('.html', '_data.json')

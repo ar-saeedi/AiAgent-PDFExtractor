@@ -24,8 +24,9 @@ class UniversalAIAnalyzer:
     Uses vision AI to understand ANY product catalog
     """
     
-    def __init__(self, use_vision: bool = True):
+    def __init__(self, use_vision: bool = True, language: str = 'english'):
         self.use_vision = use_vision
+        self.language = language.lower()
         self.ai_provider = self._detect_available_ai()
         
     def _detect_available_ai(self) -> Optional[str]:
@@ -153,16 +154,23 @@ class UniversalAIAnalyzer:
                 if 'choices' in result and len(result['choices']) > 0:
                     ai_response = result['choices'][0]['message']['content']
                     print(f"✓ DeepSeek analysis complete!")
+                    print(f"Response length: {len(ai_response)} characters")
                     
                     import re
+                    # Remove markdown code blocks
                     if '```json' in ai_response:
-                        json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
-                        if json_match:
-                            ai_response = json_match.group(1).strip()
+                        ai_response = re.sub(r'^```json\s*', '', ai_response)
+                        ai_response = re.sub(r'\s*```$', '', ai_response)
                     elif '```' in ai_response:
-                        json_match = re.search(r'```\s*(.*?)\s*```', ai_response, re.DOTALL)
-                        if json_match:
-                            ai_response = json_match.group(1).strip()
+                        ai_response = re.sub(r'^```\s*', '', ai_response)
+                        ai_response = re.sub(r'\s*```$', '', ai_response)
+                    
+                    ai_response = ai_response.strip()
+                    
+                    # Check if response seems complete
+                    if len(ai_response) < 200:
+                        print(f"WARNING: Response seems too short ({len(ai_response)} chars)")
+                        print(f"Full response: {ai_response[:1000]}")
                     
                     parsed_data = self._parse_ai_response(ai_response)
                     num_products = len(parsed_data.get('products', []))
@@ -381,16 +389,44 @@ class UniversalAIAnalyzer:
     
     def _get_analysis_prompt(self) -> str:
         """Get universal analysis prompt for ANY catalog"""
-        return """You are analyzing a product catalog PDF. Extract and structure ALL product information into JSON format for an e-commerce shopping cart.
-
-Your task:
-1. Identify ALL products/models in the catalog (could be 1 or 100+ products)
-2. Extract product details, specifications, features, pricing
-3. Identify the company/brand information
-4. Detect the product category/industry
-
-Return ONLY valid JSON in this exact structure:
-{
+        
+        # Language-specific instructions
+        if self.language == 'persian':
+            lang_instruction = """
+IMPORTANT: Return ALL text content in PERSIAN (Farsi/فارسی):
+- Product names in Persian
+- Descriptions in Persian
+- Features in Persian
+- Specification KEYS and VALUES both in Persian (e.g., "حداکثر بار": "25kg", not "Max Payload": "25kg")
+- Category names in specifications in Persian
+- All text content in Persian
+- Keep top-level JSON keys in English ("name", "model", "specifications", etc.)
+- But inside "specifications" object, use Persian keys
+- This is for Iranian customers, so use Persian language throughout
+"""
+        elif self.language == 'chinese':
+            lang_instruction = """
+IMPORTANT: Return ALL text content in SIMPLIFIED CHINESE (简体中文):
+- Product names in Chinese
+- Descriptions in Chinese
+- Features in Chinese
+- Specification KEYS and VALUES both in Chinese (e.g., "最大负载": "25kg", not "Max Payload": "25kg")
+- Category names in specifications in Chinese
+- All text content in Chinese
+- Keep top-level JSON keys in English ("name", "model", "specifications", etc.)
+- But inside "specifications" object, use Chinese keys
+- This is for Chinese customers, so use Chinese language throughout
+"""
+        else:  # english
+            lang_instruction = """
+IMPORTANT: Return ALL text content in ENGLISH:
+- Product names in English
+- Descriptions in English
+- Features in English
+- All text values in English
+"""
+        
+        json_structure = """{
     "product_family": "Main product line or catalog name",
     "category": "Product category (e.g., Electronics, Industrial, Fashion, etc.)",
     "company": {
@@ -421,7 +457,20 @@ Return ONLY valid JSON in this exact structure:
             "images_count": number_of_images_for_this_product
         }
     ]
-}
+}"""
+        
+        return f"""You are analyzing a product catalog PDF. Extract and structure ALL product information into JSON format for an e-commerce shopping cart.
+
+{lang_instruction}
+
+Your task:
+1. Identify ALL products/models in the catalog (could be 1 or 100+ products)
+2. Extract product details, specifications, features, pricing
+3. Identify the company/brand information
+4. Detect the product category/industry
+
+Return ONLY valid JSON in this exact structure:
+{json_structure}
 
 Rules:
 - Extract ALL products (not just one)
@@ -436,6 +485,9 @@ Rules:
         try:
             json_text = response_text.strip()
             data = json.loads(json_text)
+            # Add language metadata
+            data['_language'] = 'fa' if self.language == 'persian' else ('zh' if self.language == 'chinese' else 'en')
+            data['_rtl'] = (self.language == 'persian')
             return data
         except json.JSONDecodeError as e:
             print(f"JSON Parse Error: {str(e)[:100]}")
